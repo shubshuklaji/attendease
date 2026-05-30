@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AttendEase — Smart Attendance Tracker</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#050810;--card:#0b0d1c;--inner:#12152a;--border:rgba(255,255,255,.07);
+  --bd2:rgba(255,255,255,.13);--sky:#38bdf8;--green:#4ade80;--rose:#fb7185;
+  --amber:#fbbf24;--purple:#c084fc;--orange:#fb923c;--gray:#6b7280;
+  --text1:#eef2ff;--text2:#8b9cc8;--text3:#4a5580;
+}
+*{font-family:'DM Sans',sans-serif;box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+.mono{font-family:'JetBrains Mono',monospace}
+body{background:var(--bg);color:var(--text1);min-height:100svh;overscroll-behavior:none}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:rgba(56,189,248,.2);border-radius:2px}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");opacity:.45}
+.blob{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0;opacity:.06}
+.blob-1{width:600px;height:600px;background:#38bdf8;top:-250px;right:-150px;animation:drift1 22s infinite ease-in-out}
+.blob-2{width:450px;height:450px;background:#818cf8;bottom:-180px;left:-120px;animation:drift2 28s infinite ease-in-out}
+@keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-70px,50px) scale(1.1)}}
+@keyframes drift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(60px,-40px) scale(.9)}}
+#app{position:relative;z-index:1;max-width:480px;margin:0 auto;min-height:100svh}
+#header{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;
+  z-index:100;background:rgba(5,8,16,.9);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 16px}
+#main{padding-top:56px;padding-bottom:72px;min-height:100svh}
+#bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;
+  max-width:480px;z-index:100;background:rgba(5,8,16,.95);backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);height:64px;display:flex;align-items:center;padding:0 8px;
+  padding-bottom:max(4px,env(safe-area-inset-bottom))}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 4px;border-radius:12px;cursor:pointer;border:none;background:none;position:relative}
+.nav-btn .nav-icon{font-size:20px;transition:transform .2s ease}
+.nav-btn .nav-label{font-size:10px;font-weight:700;color:var(--text3);transition:color .2s;letter-spacing:.04em}
+.nav-btn.active .nav-label{color:var(--sky)}
+.nav-btn.active .nav-icon{transform:scale(1.15)}
+.nav-btn:active .nav-icon{transform:scale(.88)}
+.risk-badge{position:absolute;top:4px;right:calc(50% - 14px);
+  background:var(--rose);color:white;font-size:9px;font-weight:800;
+  min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px}
+.view{display:none;animation:fadeUp .2s ease}
+.view.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden}
+.inner-box{background:var(--inner);border:1px solid var(--border);border-radius:14px}
+.st-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;padding:8px 4px;border-radius:10px;border:1px solid transparent;
+  cursor:pointer;transition:all .15s ease;min-height:52px;background:rgba(255,255,255,.03)}
+.st-btn:active{transform:scale(.92)}
+.st-btn .s-icon{font-size:15px;line-height:1}
+.st-btn .s-lbl{font-size:9px;font-weight:700;letter-spacing:.04em;color:var(--text3);transition:color .15s}
+.st-btn.selected .s-lbl{color:white}
+.cal-day{border-radius:10px;padding:4px;min-height:54px;cursor:pointer;
+  display:flex;flex-direction:column;transition:background .15s;position:relative}
+.cal-day:hover{background:rgba(56,189,248,.07)}
+.cal-day:active{background:rgba(56,189,248,.14)}
+.cal-day.is-today{box-shadow:0 0 0 1.5px rgba(56,189,248,.5)}
+.cal-day.has-data{background:rgba(255,255,255,.025)}
+#day-panel{position:fixed;bottom:0;left:50%;transform:translate(-50%,100%);
+  width:100%;max-width:480px;z-index:300;background:#0e1022;
+  border-radius:24px 24px 0 0;border-top:1px solid var(--bd2);
+  transition:transform .3s cubic-bezier(.32,.72,0,1);max-height:82svh;display:flex;flex-direction:column}
+#day-panel.open{transform:translate(-50%,0)}
+#day-panel-body{overflow-y:auto;flex:1}
+#modal{position:fixed;inset:0;z-index:400;display:flex;align-items:flex-end;
+  justify-content:center;pointer-events:none;opacity:0;transition:opacity .2s}
+#modal.open{pointer-events:all;opacity:1}
+#modal-box{background:#0e1022;border-radius:24px 24px 0 0;border-top:1px solid var(--bd2);
+  width:100%;max-width:480px;transform:translateY(20px);
+  transition:transform .3s cubic-bezier(.32,.72,0,1);max-height:92svh;overflow-y:auto}
+#modal.open #modal-box{transform:translateY(0)}
+#info-modal{position:fixed;inset:0;z-index:400;display:flex;align-items:flex-end;
+  justify-content:center;pointer-events:none;opacity:0;transition:opacity .2s}
+#info-modal.open{pointer-events:all;opacity:1}
+#info-modal-box{background:#0e1022;border-radius:24px 24px 0 0;border-top:1px solid var(--bd2);
+  width:100%;max-width:480px;padding:20px;transform:translateY(20px);
+  transition:transform .3s cubic-bezier(.32,.72,0,1);max-height:88svh;overflow-y:auto}
+#info-modal.open #info-modal-box{transform:translateY(0)}
+#backdrop{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);
+  backdrop-filter:blur(4px);pointer-events:none;opacity:0;transition:opacity .25s}
+#backdrop.show{pointer-events:all;opacity:1}
+.pbar-bg{height:6px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden}
+.pbar-fill{height:100%;border-radius:100px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input:focus{outline:none}
+input[type=text],input[type=number]{
+  background:var(--inner);border:1px solid var(--border);border-radius:12px;
+  padding:12px 14px;color:var(--text1);font-size:15px;width:100%;
+  transition:border-color .15s;font-family:'DM Sans',sans-serif}
+input:focus{border-color:rgba(56,189,248,.5) !important}
+.color-swatch{width:30px;height:30px;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;transition:all .15s;flex-shrink:0}
+.color-swatch.sel{border-color:white;transform:scale(1.2)}
+.tday-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--border);
+  background:var(--inner);color:var(--text3);font-size:11px;font-weight:700;
+  cursor:pointer;transition:all .15s;letter-spacing:.02em}
+.tday-btn.sel{background:var(--sky);border-color:var(--sky);color:#05070f}
+.subj-accent{width:3px;border-radius:3px;align-self:stretch;flex-shrink:0}
+.calc-input{background:var(--inner);border:1px solid var(--border);border-radius:14px;
+  padding:14px 16px;color:var(--text1);font-size:22px;font-weight:700;
+  width:100%;font-family:'JetBrains Mono',monospace;transition:border-color .15s;text-align:center}
+.calc-input:focus{border-color:rgba(56,189,248,.5);outline:none}
+@keyframes pulse-live{0%,100%{opacity:1}50%{opacity:.3}}
+.live{animation:pulse-live 2s infinite}
+.q-btn{flex:1;padding:10px 6px;border-radius:14px;border:1px solid var(--border);
+  background:var(--inner);color:var(--text2);font-size:11px;font-weight:700;
+  cursor:pointer;transition:all .15s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px}
+.q-btn:active{transform:scale(.95)}
+.q-btn .qi{font-size:18px}
+.streak-badge{display:inline-flex;align-items:center;gap:5px;
+  background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);
+  border-radius:100px;padding:4px 10px;font-size:12px;font-weight:700;color:var(--amber)}
+#toast{position:fixed;top:68px;left:50%;transform:translateX(-50%) translateY(-12px);
+  z-index:500;background:var(--inner);border:1px solid var(--bd2);
+  border-radius:100px;padding:8px 18px;font-size:13px;font-weight:600;
+  white-space:nowrap;opacity:0;transition:all .3s ease;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div id="toast"></div>
+
+<div id="app">
+
+<!-- HEADER -->
+<header id="header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div style="width:32px;height:32px;background:linear-gradient(135deg,#38bdf8,#818cf8);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;color:#05070f">A</div>
+    <div>
+      <span style="font-weight:800;font-size:15px">AttendEase</span>
+      <span style="font-size:10px;background:rgba(56,189,248,.12);color:var(--sky);border:1px solid rgba(56,189,248,.25);padding:2px 6px;border-radius:6px;margin-left:6px;font-weight:700">v2</span>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button onclick="exportSummary()" style="width:34px;height:34px;border-radius:10px;background:var(--inner);border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="Copy attendance summary">&#x1F4CB;</button>
+    <button onclick="openInfoModal()" style="width:34px;height:34px;border-radius:10px;background:var(--inner);border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="How it works">&#x2753;</button>
+    <button onclick="openModal()" style="display:flex;align-items:center;gap:5px;background:var(--sky);color:#05070f;font-weight:700;font-size:13px;padding:7px 13px;border-radius:10px;border:none;cursor:pointer">
+      <span style="font-size:16px;line-height:1">+</span> Subject
+    </button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main id="main">
+
+  <!-- DASHBOARD -->
+  <div id="view-dashboard" class="view active" style="padding:16px">
+    <div id="dash-overall" style="margin-bottom:12px"></div>
+    <div id="dash-quick-actions" style="display:flex;gap:8px;margin-bottom:12px"></div>
+    <div id="dash-subject-cards"></div>
+    <div id="dash-empty" style="display:none;text-align:center;padding:48px 20px;color:var(--text3)">
+      <div style="font-size:48px;margin-bottom:12px">&#x1F4DA;</div>
+      <div style="font-weight:700;font-size:16px;margin-bottom:6px">No Subjects Yet</div>
+      <div style="font-size:13px;margin-bottom:20px">Add your subjects to start tracking attendance</div>
+      <button onclick="openModal()" style="background:var(--sky);color:#05070f;font-weight:700;padding:10px 20px;border-radius:12px;border:none;cursor:pointer">+ Add First Subject</button>
+    </div>
+  </div>
+
+  <!-- CALCULATOR -->
+  <div id="view-calculator" class="view" style="padding:16px">
+    <div style="text-align:center;padding:16px 0 20px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--sky);text-transform:uppercase;margin-bottom:8px">Quick Bunk Calculator</div>
+      <div style="font-size:28px;font-weight:800;line-height:1.2">Can I Bunk <span style="background:linear-gradient(90deg,var(--sky),#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Today?</span></div>
+      <div style="font-size:13px;color:var(--text3);margin-top:6px">No subjects needed — just enter your numbers</div>
+    </div>
+    <div class="card" style="padding:16px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;margin-bottom:12px">Your Attendance Data</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:2px">
+        <div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:6px">Classes Attended</div>
+          <input class="calc-input" type="number" id="c-attended" value="45" min="0" oninput="quickCalc()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:6px">Total Held</div>
+          <input class="calc-input" type="number" id="c-total" value="60" min="1" oninput="quickCalc()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:6px">Remaining This Sem</div>
+          <input class="calc-input" type="number" id="c-remaining" value="30" min="0" oninput="quickCalc()">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:6px">Required %</div>
+          <input class="calc-input" type="number" id="c-required" value="75" min="1" max="100" oninput="quickCalc()">
+        </div>
+      </div>
+    </div>
+    <div id="calc-results"></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div id="view-calendar" class="view" style="padding:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <button onclick="calPrev()" style="width:38px;height:38px;border-radius:12px;background:var(--inner);border:1px solid var(--border);color:var(--text2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">&#x2039;</button>
+      <div id="cal-month-label" style="font-weight:800;font-size:18px"></div>
+      <button onclick="calNext()" style="width:38px;height:38px;border-radius:12px;background:var(--inner);border:1px solid var(--border);color:var(--text2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">&#x203A;</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">
+      <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding:4px">M</div>
+      <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding:4px">T</div>
+      <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding:4px">W</div>
+      <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding:4px">T</div>
+      <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding:4px">F</div>
+      <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding:4px">S</div>
+      <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding:4px">S</div>
+    </div>
+    <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px"></div>
+    <div id="cal-legend" style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px 14px"></div>
+  </div>
+
+  <!-- SUBJECTS -->
+  <div id="view-subjects" class="view" style="padding:16px">
+    <div id="subjects-mgmt"></div>
+    <div id="subjects-mgmt-empty" style="display:none;text-align:center;padding:48px 20px;color:var(--text3)">
+      <div style="font-size:48px;margin-bottom:12px">&#x1F4DA;</div>
+      <div style="font-weight:700;font-size:16px;margin-bottom:6px">No Subjects</div>
+      <div style="font-size:13px;margin-bottom:20px">Tap the + Subject button to get started</div>
+      <button onclick="openModal()" style="background:var(--sky);color:#05070f;font-weight:700;padding:10px 20px;border-radius:12px;border:none;cursor:pointer">+ Add Subject</button>
+    </div>
+  </div>
+
+</main>
+
+<!-- BOTTOM NAV -->
+<nav id="bottom-nav">
+  <button class="nav-btn active" id="nav-dashboard" onclick="switchView('dashboard')">
+    <span class="nav-icon">&#x1F4CA;</span>
+    <span class="nav-label">DASHBOARD</span>
+    <span id="risk-badge" class="risk-badge" style="display:none">0</span>
+  </button>
+  <button class="nav-btn" id="nav-calculator" onclick="switchView('calculator')">
+    <span class="nav-icon">&#x1F9EE;</span>
+    <span class="nav-label">CALC</span>
+  </button>
+  <button class="nav-btn" id="nav-calendar" onclick="switchView('calendar')">
+    <span class="nav-icon">&#x1F4C5;</span>
+    <span class="nav-label">CALENDAR</span>
+  </button>
+  <button class="nav-btn" id="nav-subjects" onclick="switchView('subjects')">
+    <span class="nav-icon">&#x1F4DA;</span>
+    <span class="nav-label">SUBJECTS</span>
+  </button>
+</nav>
+</div>
+
+<!-- BACKDROP -->
+<div id="backdrop" onclick="closeDayPanel();closeModal();closeInfoModal()"></div>
+
+<!-- DAY PANEL -->
+<div id="day-panel">
+  <div style="display:flex;justify-content:center;padding:10px 0 6px">
+    <div style="width:36px;height:4px;background:rgba(255,255,255,.15);border-radius:2px"></div>
+  </div>
+  <div style="padding:4px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between">
+    <div>
+      <div id="dp-dayname" style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.08em;text-transform:uppercase"></div>
+      <div id="dp-datestr" style="font-size:22px;font-weight:800;margin-top:1px"></div>
+    </div>
+    <button onclick="closeDayPanel()" style="width:34px;height:34px;border-radius:50%;background:var(--inner);border:1px solid var(--border);color:var(--text2);font-size:16px;cursor:pointer;margin-top:2px">&#x2715;</button>
+  </div>
+  <div id="day-panel-body"></div>
+  <div id="dp-footer" style="padding:12px 20px;border-top:1px solid var(--border);background:var(--card)"></div>
+</div>
+
+<!-- SUBJECT MODAL -->
+<div id="modal">
+  <div id="modal-box">
+    <div style="display:flex;justify-content:center;padding:10px 0 4px">
+      <div style="width:36px;height:4px;background:rgba(255,255,255,.15);border-radius:2px"></div>
+    </div>
+    <div style="padding:4px 20px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div id="modal-title" style="font-size:18px;font-weight:800">Add Subject</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">Enter details from your timetable</div>
+      </div>
+      <button onclick="closeModal()" style="width:34px;height:34px;border-radius:50%;background:var(--inner);border:1px solid var(--border);color:var(--text2);font-size:16px;cursor:pointer">&#x2715;</button>
+    </div>
+    <div id="modal-form" style="padding:20px"></div>
+  </div>
+</div>
+
+<!-- INFO MODAL -->
+<div id="info-modal">
+  <div id="info-modal-box">
+    <div style="display:flex;justify-content:center;padding:10px 0 4px">
+      <div style="width:36px;height:4px;background:rgba(255,255,255,.15);border-radius:2px"></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-size:18px;font-weight:800">&#x1F4D6; How It Works</div>
+      <button onclick="closeInfoModal()" style="width:34px;height:34px;border-radius:50%;background:var(--inner);border:1px solid var(--border);color:var(--text2);font-size:16px;cursor:pointer">&#x2715;</button>
+    </div>
+    <div id="info-content"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const COLORS=['#38bdf8','#4ade80','#fb7185','#fbbf24','#c084fc','#fb923c','#2dd4bf','#a78bfa','#facc15','#60a5fa'];
+const WEEK_DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS_FULL=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+const STATUS={
+  present:      {label:'Present',    icon:'&#x2713;',short:'P',clr:'#4ade80',bg:'rgba(74,222,128,.18)', bd:'rgba(74,222,128,.4)', countsAttended:true, countsHeld:true},
+  absent:       {label:'Absent',     icon:'&#x2715;',short:'A',clr:'#fb7185',bg:'rgba(251,113,133,.18)',bd:'rgba(251,113,133,.4)',countsAttended:false,countsHeld:true},
+  extra_class:  {label:'Extra Class',icon:'&#x2295;',short:'E',clr:'#38bdf8',bg:'rgba(56,189,248,.18)', bd:'rgba(56,189,248,.4)', countsAttended:true, countsHeld:true},
+  medical_leave:{label:'Med. Leave', icon:'&#x2665;',short:'M',clr:'#fbbf24',bg:'rgba(251,191,36,.18)', bd:'rgba(251,191,36,.4)', countsAttended:false,countsHeld:true},
+  on_duty:      {label:'On Duty',    icon:'&#x2605;',short:'O',clr:'#c084fc',bg:'rgba(192,132,252,.18)',bd:'rgba(192,132,252,.4)',countsAttended:false,countsHeld:true},
+  cancelled:    {label:'Cancelled',  icon:'&#x2298;',short:'C',clr:'#6b7280',bg:'rgba(107,114,128,.18)',bd:'rgba(107,114,128,.4)',countsAttended:false,countsHeld:false},
+};
+
+let S={
+  subjects:[],attendance:[],settings:{leave_exempted:false},
+  ui:{view:'dashboard',calYear:new Date().getFullYear(),calMonth:new Date().getMonth(),
+      selectedDate:null,editId:null,selColor:COLORS[0]}
+};
+
+function persist(){localStorage.setItem('ae_v4',JSON.stringify({subjects:S.subjects,attendance:S.attendance,settings:S.settings}))}
+function hydrate(){
+  try{
+    const raw=localStorage.getItem('ae_v4');
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    if(d.subjects)  S.subjects  =d.subjects;
+    if(d.attendance)S.attendance=d.attendance;
+    if(d.settings)  S.settings  =d.settings;
+  }catch(e){console.warn('Hydration failed',e)}
+}
+
+function calcAttendance(attended,total,remaining,required){
+  const R=required/100;
+  if(total===0){return{currentPct:0,status:'no_data',safeBunks:0,classesNeeded:0,canRecover:true,minPct:0,maxPct:remaining>0?100:0,pred70:0,pred90:0,recoveryPlan:null}}
+  const currentPct=parseFloat((attended/total*100).toFixed(1));
+  const safeBunks=Math.max(0,Math.floor(attended+remaining*(1-R)-R*total));
+  const rawNeeded=R*(total+remaining)-attended;
+  const classesNeeded=currentPct>=required?0:Math.max(0,Math.ceil(rawNeeded));
+  const canRecover=classesNeeded<=remaining;
+  const minPct=remaining>0?parseFloat((attended/(total+remaining)*100).toFixed(1)):currentPct;
+  const maxPct=remaining>0?parseFloat(((attended+remaining)/(total+remaining)*100).toFixed(1)):currentPct;
+  const pred70=remaining>0?parseFloat(((attended+.7*remaining)/(total+remaining)*100).toFixed(1)):currentPct;
+  const pred90=remaining>0?parseFloat(((attended+.9*remaining)/(total+remaining)*100).toFixed(1)):currentPct;
+  let status;
+  if(currentPct>=required+10)status='safe';
+  else if(currentPct>=required)status='on_edge';
+  else if(canRecover)status='danger';
+  else status='critical';
+  let recoveryPlan=null;
+  if(currentPct<required&&canRecover){
+    const bunksAfter=Math.max(0,Math.floor((attended+classesNeeded)+(remaining-classesNeeded)*(1-R)-R*(total+classesNeeded)));
+    recoveryPlan={attendNow:classesNeeded,bunksAfter,weeksToRecover:Math.ceil(classesNeeded/5)};
+  }
+  return{currentPct,safeBunks,classesNeeded,canRecover,minPct,maxPct,pred70,pred90,status,remaining,recoveryPlan};
+}
+
+function calcSubjectStats(subj){
+  const recs=S.attendance.filter(a=>a.subject_id===subj.id);
+  let attended=0,heldFull=0,extra=0;
+  recs.forEach(r=>{
+    const st=STATUS[r.status];
+    if(!st)return;
+    if(st.countsAttended)attended++;
+    if(st.countsHeld){
+      heldFull++;
+    }
+    if(r.status==='extra_class')extra++;
+  });
+  const effectiveTotal=subj.total+extra;
+  const held=heldFull;
+  let heldForPct=heldFull;
+  if(S.settings.leave_exempted){
+    const exemptCount=recs.filter(r=>r.status==='medical_leave'||r.status==='on_duty').length;
+    heldForPct=heldFull-exemptCount;
+  }
+  const remaining=Math.max(0,effectiveTotal-held);
+  const semMinAttend=Math.ceil(subj.required/100*effectiveTotal);
+  const semMaxBunk=Math.max(0,effectiveTotal-semMinAttend);
+  const core=calcAttendance(attended,Math.max(0,heldForPct),remaining,subj.required);
+  return{...core,attended,held,remaining,semMinAttend,semMaxBunk,effectiveTotal};
+}
+
+function calcStreak(){
+  const presentDates=new Set(S.attendance.filter(a=>a.status==='present'||a.status==='extra_class').map(a=>a.date));
+  let streak=0,d=new Date();
+  for(let i=0;i<365;i++){
+    const dow=d.getDay();
+    if(dow!==0){if(presentDates.has(fmtDate(d)))streak++;else break;}
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+
+function getStatusStyle(status){
+  return({
+    no_data: {clr:'var(--text3)',bd:'rgba(255,255,255,.07)',bg:'transparent',label:'No Data'},
+    safe:    {clr:'var(--green)',bd:'rgba(74,222,128,.25)', bg:'rgba(74,222,128,.04)', label:'Safe &#x2713;'},
+    on_edge: {clr:'var(--amber)',bd:'rgba(251,191,36,.25)', bg:'rgba(251,191,36,.04)', label:'On Edge &#x26A0;'},
+    danger:  {clr:'var(--rose)', bd:'rgba(251,113,133,.3)',bg:'rgba(251,113,133,.05)',label:'Danger &#x1F6A8;'},
+    critical:{clr:'var(--rose)', bd:'rgba(251,113,133,.4)',bg:'rgba(239,68,68,.07)',  label:'Critical &#x1F480;'},
+  })[status]||{clr:'var(--text3)',bd:'rgba(255,255,255,.07)',bg:'transparent',label:'&mdash;'};
+}
+function pctClr(s){return s==='safe'?'var(--green)':s==='on_edge'?'var(--amber)':(s==='danger'||s==='critical')?'var(--rose)':'var(--text3)'}
+
+function renderDashboard(){
+  const subjects=S.subjects;
+  if(subjects.length===0){
+    document.getElementById('dash-overall').innerHTML='';
+    document.getElementById('dash-quick-actions').innerHTML='';
+    document.getElementById('dash-subject-cards').innerHTML='';
+    document.getElementById('dash-empty').style.display='block';
+    document.getElementById('risk-badge').style.display='none';
+    return;
+  }
+  document.getElementById('dash-empty').style.display='none';
+  const allStats=subjects.map(s=>({s,st:calcSubjectStats(s)}));
+  const totalAttended=allStats.reduce((a,{st})=>a+st.attended,0);
+  const totalHeld=allStats.reduce((a,{st})=>a+st.held,0);
+  const overallPct=totalHeld>0?Math.round(totalAttended/totalHeld*100):0;
+  const safeCount=allStats.filter(({st})=>st.status==='safe'||st.status==='on_edge').length;
+  const riskCount=allStats.filter(({st})=>st.status==='danger'||st.status==='critical').length;
+  const streak=calcStreak();
+  const badge=document.getElementById('risk-badge');
+  if(riskCount>0){badge.textContent=riskCount;badge.style.display='flex';}else badge.style.display='none';
+  const oc=totalHeld>0?(overallPct>=75?'var(--green)':overallPct>=65?'var(--amber)':'var(--rose)'):'var(--text3)';
+
+  document.getElementById('dash-overall').innerHTML=`
+  <div class="card" style="padding:16px;margin-bottom:0">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase">Overall Attendance</div>
+        ${streak>1?`<div class="streak-badge" style="margin-top:6px">&#x1F525; ${streak}-day streak</div>`:''}
+      </div>
+      <div class="mono" style="font-size:44px;font-weight:700;color:${oc};line-height:1">${totalHeld>0?overallPct+'%':'&mdash;'}</div>
+    </div>
+    <div class="pbar-bg" style="margin-bottom:12px"><div class="pbar-fill" style="width:${Math.min(100,overallPct)}%;background:${oc}"></div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <div style="text-align:center;background:var(--inner);border-radius:12px;padding:10px 6px">
+        <div class="mono" style="font-size:20px;font-weight:700">${subjects.length}</div>
+        <div style="font-size:10px;color:var(--text3);font-weight:600;margin-top:2px">SUBJECTS</div>
+      </div>
+      <div style="text-align:center;background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.2);border-radius:12px;padding:10px 6px">
+        <div class="mono" style="font-size:20px;font-weight:700;color:var(--green)">${safeCount}</div>
+        <div style="font-size:10px;color:var(--text3);font-weight:600;margin-top:2px">SAFE</div>
+      </div>
+      <div style="text-align:center;background:${riskCount>0?'rgba(251,113,133,.07)':'var(--inner)'};border:1px solid ${riskCount>0?'rgba(251,113,133,.2)':'var(--border)'};border-radius:12px;padding:10px 6px">
+        <div class="mono" style="font-size:20px;font-weight:700;color:${riskCount>0?'var(--rose)':'var(--text3)'}">${riskCount}</div>
+        <div style="font-size:10px;color:var(--text3);font-weight:600;margin-top:2px">AT RISK</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 12px;background:var(--inner);border-radius:12px;border:1px solid var(--border)">
+      <div>
+        <div style="font-size:12px;font-weight:600">Leave Exemption</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:1px">Medical &amp; On-Duty don&#x27;t count</div>
+      </div>
+      <button onclick="toggleLeave()" style="width:44px;height:24px;border-radius:12px;background:${S.settings.leave_exempted?'var(--sky)':'rgba(255,255,255,.1)'};border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0">
+        <div style="position:absolute;top:2px;${S.settings.leave_exempted?'right:2px':'left:2px'};width:20px;height:20px;border-radius:50%;background:white;transition:all .2s"></div>
+      </button>
+    </div>
+  </div>`;
+
+  const today=fmtDate(new Date());
+  document.getElementById('dash-quick-actions').innerHTML=`
+    <button class="q-btn" onclick="switchView('calendar');setTimeout(()=>openDayPanel('${today}'),80)">
+      <span class="qi">&#x1F4C5;</span><span>Mark Today</span>
+    </button>
+    <button class="q-btn" onclick="switchView('calculator')">
+      <span class="qi">&#x1F9EE;</span><span>Quick Calc</span>
+    </button>
+    <button class="q-btn" onclick="exportSummary()">
+      <span class="qi">&#x1F4CB;</span><span>Export</span>
+    </button>
+    <button class="q-btn" onclick="openInfoModal()">
+      <span class="qi">&#x2753;</span><span>Formulas</span>
+    </button>`;
+
+  const statusOrder={critical:0,danger:1,on_edge:2,safe:3,no_data:4};
+  const sorted=[...allStats].sort((a,b)=>(statusOrder[a.st.status]||5)-(statusOrder[b.st.status]||5));
+  document.getElementById('dash-subject-cards').innerHTML=sorted.map(({s,st})=>dashSubjectCard(s,st)).join('');
+}
+
+function dashSubjectCard(subj,st){
+  const ss=getStatusStyle(st.status);
+  const pc=pctClr(st.status);
+  const semProg=st.semMinAttend>0?Math.min(100,st.attended/st.semMinAttend*100):0;
+  return `
+  <div class="card" style="margin-bottom:12px;background:${ss.bg};border-color:${ss.bd}">
+    <div style="padding:14px 16px 10px;display:flex;gap:10px;align-items:flex-start">
+      <div class="subj-accent" style="background:${subj.color}"></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px">
+          <div style="font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(subj.name)}</div>
+          <div style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:100px;white-space:nowrap;color:${ss.clr};border:1px solid ${ss.bd};background:${ss.bg}">${ss.label}</div>
+        </div>
+        <div style="font-size:11px;color:var(--text3)">${esc(subj.code||'&mdash;')} &middot; ${subj.total} classes &middot; ${subj.required}% req</div>
+      </div>
+    </div>
+    <div style="margin:0 12px 10px;background:var(--inner);border:1px solid var(--border);border-radius:14px;padding:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">&#x1F4CC; Semester Target</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div style="flex:1;text-align:center">
+          <div class="mono" style="font-size:26px;font-weight:700;color:${pc};line-height:1">${st.semMinAttend}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">must attend</div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);font-weight:600;text-align:center">of<br>${subj.total}</div>
+        <div style="flex:1;text-align:center">
+          <div class="mono" style="font-size:26px;font-weight:700;color:var(--green);line-height:1">${st.semMaxBunk}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">can bunk max</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px">
+        <span>Progress toward target</span><span class="mono">${st.attended}/${st.semMinAttend}</span>
+      </div>
+      <div class="pbar-bg"><div class="pbar-fill" style="width:${semProg}%;background:${subj.color}"></div></div>
+    </div>
+    ${st.held>0?`
+    <div style="margin:0 12px 10px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="live" style="width:6px;height:6px;border-radius:50%;background:${ss.clr}"></div>
+          <span style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase">Live Status</span>
+        </div>
+        <div class="mono" style="font-size:22px;font-weight:700;color:${pc}">${st.currentPct}%</div>
+      </div>
+      <div class="pbar-bg" style="margin-bottom:8px"><div class="pbar-fill" style="width:${Math.min(100,st.currentPct)}%;background:${ss.clr}"></div></div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px" class="mono">${st.attended} attended &middot; ${st.held} held &middot; ${st.remaining} left</div>
+      ${st.status==='safe'||st.status==='on_edge'?`
+      <div style="background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--green)">&#x1F3D6; SAFE BUNKS LEFT</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:1px">from ${st.remaining} remaining</div>
+        </div>
+        <div class="mono" style="font-size:38px;font-weight:700;color:var(--green)">${st.safeBunks}</div>
+      </div>`:st.status==='danger'?`
+      <div style="background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.25);border-radius:10px;padding:10px 12px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--rose)">&#x1F3AF; MUST ATTEND</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:1px">of ${st.remaining} remaining</div>
+          </div>
+          <div class="mono" style="font-size:38px;font-weight:700;color:var(--rose)">${st.classesNeeded}</div>
+        </div>
+        ${st.recoveryPlan?`<div style="margin-top:8px;font-size:11px;color:var(--text3)">After recovery &rarr; ${st.recoveryPlan.bunksAfter} bunks free &middot; ~${st.recoveryPlan.weeksToRecover} wk</div>`:''}
+      </div>`:`
+      <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:700;color:var(--rose)">&#x1F480; Recovery Impossible</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Max possible: ${st.maxPct}% (attending all ${st.remaining} left)</div>
+        <div style="font-size:11px;color:rgba(251,113,133,.7);margin-top:6px">Talk to your professor about condonation.</div>
+      </div>`}
+    </div>`:`
+    <div style="margin:0 12px 10px;text-align:center;padding:8px;font-size:12px;color:var(--text3)">
+      No attendance marked yet &middot; Go to <strong style="color:var(--sky)">Calendar</strong> &rarr;
+    </div>`}
+    <div style="display:flex;gap:8px;padding:0 12px 12px">
+      <button onclick="switchView('calendar')" style="flex:1;background:var(--inner);border:1px solid var(--border);color:var(--sky);font-size:12px;font-weight:600;padding:8px;border-radius:10px;cursor:pointer">&#x1F4C5; Mark</button>
+      <button onclick="openModal('${subj.id}')" style="flex:1;background:var(--inner);border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:600;padding:8px;border-radius:10px;cursor:pointer">&#x270F; Edit</button>
+      <button onclick="deleteSubject('${subj.id}')" style="flex:1;background:var(--inner);border:1px solid var(--border);color:var(--rose);font-size:12px;font-weight:600;padding:8px;border-radius:10px;cursor:pointer;opacity:.7">&#x1F5D1; Del</button>
+    </div>
+  </div>`;
+}
+
+function quickCalc(){
+  const attended=parseInt(document.getElementById('c-attended')?.value)||0;
+  const total=parseInt(document.getElementById('c-total')?.value)||0;
+  const remaining=parseInt(document.getElementById('c-remaining')?.value)||0;
+  const required=parseFloat(document.getElementById('c-required')?.value)||75;
+  const el=document.getElementById('calc-results');
+  if(total===0){el.innerHTML=`<div class="card" style="padding:24px;text-align:center;color:var(--text3)"><div style="font-size:36px;margin-bottom:8px">&#x1F4CA;</div><div>Enter your class counts above</div></div>`;return}
+  if(attended>total){el.innerHTML=`<div class="card" style="padding:16px;text-align:center;color:var(--rose);font-weight:600">&#x26A0;&#xFE0F; Attended can&#x27;t exceed total held</div>`;return}
+  const r=calcAttendance(attended,total,remaining,required);
+  const pc=pctClr(r.status);
+  const ss=getStatusStyle(r.status);
+  const statusLabel={safe:'&#x2705; Safe',on_edge:'&#x26A0;&#xFE0F; On Edge',danger:'&#x1F6A8; Danger',critical:'&#x1F480; Critical',no_data:'&mdash;'}[r.status];
+  el.innerHTML=`
+  <div class="card" style="padding:16px;background:${ss.bg};margin-bottom:12px">
+    <div style="text-align:center;padding:12px 0 16px;border-bottom:1px solid var(--border)">
+      <div class="mono" style="font-size:64px;font-weight:700;color:${pc};line-height:1">${r.currentPct}%</div>
+      <div style="font-size:14px;font-weight:700;margin-top:6px">${statusLabel}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px">${attended} attended / ${total} held</div>
+    </div>
+    <div style="padding:16px 0;text-align:center;border-bottom:1px solid var(--border)">
+      ${r.status==='safe'||r.status==='on_edge'?`
+      <div style="font-size:11px;font-weight:700;color:var(--green);letter-spacing:.08em;margin-bottom:4px">&#x1F3D6; SAFE BUNKS LEFT</div>
+      <div class="mono" style="font-size:54px;font-weight:700;color:var(--green);line-height:1">${r.safeBunks}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px">from ${remaining} remaining classes</div>
+      `:r.status==='danger'?`
+      <div style="font-size:11px;font-weight:700;color:var(--rose);letter-spacing:.08em;margin-bottom:4px">&#x1F3AF; CLASSES YOU MUST ATTEND</div>
+      <div class="mono" style="font-size:54px;font-weight:700;color:var(--rose);line-height:1">${r.classesNeeded}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px">of ${remaining} remaining to recover</div>
+      ${r.recoveryPlan?`<div style="margin-top:12px;background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.2);border-radius:12px;padding:10px;font-size:12px;color:var(--text2)">After attending those &rarr; <strong style="color:var(--green)">${r.recoveryPlan.bunksAfter} bunks free</strong> &middot; ~<strong>${r.recoveryPlan.weeksToRecover} weeks</strong> to recover</div>`:''}
+      `:`
+      <div style="font-size:13px;font-weight:700;color:var(--rose);margin-bottom:8px">&#x1F480; Recovery Impossible</div>
+      <div style="font-size:12px;color:var(--text3)">Even attending all ${remaining} remaining &rarr; max <span class="mono" style="color:var(--rose)">${r.maxPct}%</span></div>
+      `}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-top:14px">
+      <div style="text-align:center"><div class="mono" style="font-size:17px;font-weight:700">${r.minPct}%</div><div style="font-size:10px;color:var(--text3);font-weight:600;margin-top:2px">MIN (skip all)</div></div>
+      <div style="text-align:center"><div class="mono" style="font-size:17px;font-weight:700;color:var(--amber)">${r.pred70}%</div><div style="font-size:10px;color:var(--text3);font-weight:600;margin-top:2px">IF 70% FUTURE</div></div>
+      <div style="text-align:center"><div class="mono" style="font-size:17px;font-weight:700">${r.maxPct}%</div><div style="font-size:10px;color:var(--text3);font-weight:600;margin-top:2px">MAX (attend all)</div></div>
+    </div>
+  </div>
+  ${remaining>0?`<div class="card" style="padding:14px;margin-bottom:12px">
+    <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Scenario Range</div>
+    <div style="position:relative;height:20px;background:var(--inner);border-radius:100px;overflow:hidden;margin-bottom:6px">
+      <div style="position:absolute;top:0;bottom:0;left:${Math.min(100,r.minPct)}%;right:${100-Math.min(100,r.maxPct)}%;background:linear-gradient(90deg,rgba(251,113,133,.6),rgba(74,222,128,.6))"></div>
+      <div style="position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.5);left:${Math.min(100,required)}%"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)" class="mono">
+      <span>${r.minPct}% (worst)</span><span>${required}% req</span><span>${r.maxPct}% (best)</span>
+    </div>
+  </div>`:''}`
+}
+
+function renderCalendar(){
+  const{calYear:Y,calMonth:M}=S.ui;
+  document.getElementById('cal-month-label').textContent=`${MONTHS[M]} ${Y}`;
+  const firstDayMon=(new Date(Y,M,1).getDay()+6)%7;
+  const daysInMonth=new Date(Y,M+1,0).getDate();
+  const today=fmtDate(new Date());
+  let html='';
+  for(let i=0;i<firstDayMon;i++)html+='<div></div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const date=fmtDateYMD(Y,M,d);
+    const isToday=date===today;
+    const recs=S.attendance.filter(a=>a.date===date);
+    const hasData=recs.length>0;
+    const dots=recs.slice(0,5).map(r=>{const subj=S.subjects.find(s=>s.id===r.subject_id);const st=STATUS[r.status];return subj?subj.color:(st?st.clr:'#6b7280')});
+    const dow=(new Date(Y,M,d).getDay()+6)%7;
+    const isWeekend=dow>=5;
+    html+=`<div class="cal-day ${isToday?'is-today':''} ${hasData?'has-data':''}" onclick="openDayPanel('${date}')">
+      <div style="font-size:12px;font-weight:${isToday?'800':'500'};color:${isToday?'var(--sky)':isWeekend?'var(--text3)':'var(--text2)'};text-align:center;line-height:1.2">${d}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;margin-top:3px">
+        ${dots.map(c=>`<div style="width:5px;height:5px;border-radius:50%;background:${c}"></div>`).join('')}
+      </div>
+    </div>`;
+  }
+  document.getElementById('cal-grid').innerHTML=html;
+  const used=new Set(S.attendance.map(a=>a.status));
+  const leg=[...used].map(s=>{const st=STATUS[s];if(!st)return'';return`<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)"><div style="width:8px;height:8px;border-radius:50%;background:${st.clr}"></div><span>${st.label}</span></div>`}).join('');
+  document.getElementById('cal-legend').innerHTML=leg||`<div style="font-size:12px;color:var(--text3)">Tap a date to mark attendance</div>`;
+}
+
+function calPrev(){if(S.ui.calMonth===0){S.ui.calYear--;S.ui.calMonth=11;}else S.ui.calMonth--;renderCalendar()}
+function calNext(){if(S.ui.calMonth===11){S.ui.calYear++;S.ui.calMonth=0;}else S.ui.calMonth++;renderCalendar()}
+
+function openDayPanel(date){
+  S.ui.selectedDate=date;
+  const d=new Date(date+'T12:00:00');
+  const dayIdx=(d.getDay()+6)%7;
+  document.getElementById('dp-dayname').textContent=DAYS_FULL[dayIdx];
+  document.getElementById('dp-datestr').textContent=`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  renderDayPanelBody(date);
+  document.getElementById('day-panel').classList.add('open');
+  document.getElementById('backdrop').classList.add('show');
+}
+
+function closeDayPanel(){
+  document.getElementById('day-panel').classList.remove('open');
+  document.getElementById('backdrop').classList.remove('show');
+  renderDashboard();
+  if(S.ui.view==='calendar')renderCalendar();
+}
+
+function renderDayPanelBody(date){
+  const d=new Date(date+'T12:00:00');
+  const dayIdx=(d.getDay()+6)%7;
+  const sorted=[...S.subjects].sort((a,b)=>{
+    const aS=!a.days||a.days.length===0||a.days.includes(dayIdx);
+    const bS=!b.days||b.days.length===0||b.days.includes(dayIdx);
+    return aS===bS?0:aS?-1:1;
+  });
+  if(sorted.length===0){
+    document.getElementById('day-panel-body').innerHTML=`<div style="padding:24px;text-align:center;color:var(--text3)">No subjects added yet</div>`;
+    document.getElementById('dp-footer').innerHTML='';return;
+  }
+  let html='<div style="padding:12px 16px">';
+  for(const subj of sorted){
+    const rec=S.attendance.find(a=>a.subject_id===subj.id&&a.date===date);
+    const current=rec?.status||null;
+    const isScheduled=!subj.days||subj.days.length===0||subj.days.includes(dayIdx);
+    const stKeys=Object.keys(STATUS);
+    html+=`<div style="margin-bottom:12px;padding:12px;background:var(--inner);border:1px solid var(--border);border-radius:16px;${!isScheduled?'opacity:.5':''}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${subj.color};flex-shrink:0"></div>
+        <div style="font-weight:700;font-size:13px;flex:1">${esc(subj.name)}</div>
+        ${!isScheduled?`<div style="font-size:9px;color:var(--text3);background:rgba(255,255,255,.05);border-radius:6px;padding:2px 5px">not scheduled</div>`:''}
+        ${current?`<div style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:6px;background:${STATUS[current].bg};color:${STATUS[current].clr};border:1px solid ${STATUS[current].bd}">${STATUS[current].label}</div>`:''}
+      </div>
+      <div style="display:flex;gap:3px">
+        ${stKeys.map(key=>{const st=STATUS[key];return`<button class="st-btn ${current===key?'selected':''}" style="${current===key?`background:${st.bg};border-color:${st.bd};`:''}" onclick="markAtt('${subj.id}','${date}','${key}')"><span class="s-icon">${st.icon}</span><span class="s-lbl">${st.short}</span></button>`}).join('')}
+      </div>
+    </div>`;
+  }
+  html+='</div>';
+  document.getElementById('day-panel-body').innerHTML=html;
+  const dayRecs=S.attendance.filter(a=>a.date===date);
+  const pCount=dayRecs.filter(a=>a.status==='present'||a.status==='extra_class').length;
+  const aCount=dayRecs.filter(a=>a.status==='absent').length;
+  document.getElementById('dp-footer').innerHTML=`
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div style="font-size:12px;color:var(--text3)">${dayRecs.length} of ${S.subjects.length} marked</div>
+    <div style="display:flex;gap:12px">
+      <span style="font-size:12px;color:var(--green);font-weight:700">&#x2713; ${pCount} present</span>
+      <span style="font-size:12px;color:var(--rose);font-weight:700">&#x2715; ${aCount} absent</span>
+    </div>
+  </div>`;
+}
+
+function renderSubjects(){
+  const el=document.getElementById('subjects-mgmt');
+  const ee=document.getElementById('subjects-mgmt-empty');
+  if(S.subjects.length===0){el.innerHTML='';ee.style.display='block';return}
+  ee.style.display='none';
+  el.innerHTML=`
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div style="font-weight:800;font-size:16px">All Subjects <span style="font-size:13px;color:var(--text3);font-weight:500">(${S.subjects.length})</span></div>
+    <button onclick="openModal()" style="background:var(--sky);color:#05070f;font-weight:700;font-size:13px;padding:7px 13px;border-radius:10px;border:none;cursor:pointer">+ Add</button>
+  </div>
+  ${S.subjects.map(subj=>{
+    const st=calcSubjectStats(subj);
+    const pc=pctClr(st.status);
+    const days=subj.days&&subj.days.length>0?subj.days.map(i=>WEEK_DAYS[i]).join(', '):'All days';
+    return `<div class="card" style="padding:14px;margin-bottom:10px;display:flex;gap:10px;align-items:center">
+      <div class="subj-accent" style="background:${subj.color};height:52px"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(subj.name)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${esc(subj.code||'&mdash;')} &middot; ${subj.required}% req &middot; ${subj.total} classes</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">&#x1F4C5; ${days}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="mono" style="font-size:22px;font-weight:700;color:${pc}">${st.held>0?st.currentPct+'%':'&mdash;'}</div>
+        <div style="font-size:10px;color:var(--text3)">live %</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button onclick="openModal('${subj.id}')" style="width:32px;height:32px;border-radius:8px;background:var(--inner);border:1px solid var(--border);color:var(--text2);font-size:13px;cursor:pointer">&#x270F;</button>
+        <button onclick="deleteSubject('${subj.id}')" style="width:32px;height:32px;border-radius:8px;background:var(--inner);border:1px solid var(--border);color:var(--rose);font-size:13px;cursor:pointer;opacity:.7">&#x1F5D1;</button>
+      </div>
+    </div>`;
+  }).join('')}`;
+}
+
+function openModal(editId=null){
+  S.ui.editId=editId||null;
+  const subj=editId?S.subjects.find(s=>s.id===editId):null;
+  S.ui.selColor=subj?.color||COLORS[S.subjects.length%COLORS.length];
+  document.getElementById('modal-title').textContent=editId?'Edit Subject':'Add Subject';
+  const colorSwatches=COLORS.map((c,i)=>`<div class="color-swatch ${S.ui.selColor===c?'sel':''}" id="sw-${i}" style="background:${c}" onclick="selectColor('${c}')"></div>`).join('');
+  const dayBtns=WEEK_DAYS.map((d,i)=>`<button class="tday-btn ${subj?.days?.includes(i)?'sel':''}" id="tday-${i}" onclick="toggleDay(${i})">${d}</button>`).join('');
+  document.getElementById('modal-form').innerHTML=`
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div>
+      <div style="font-size:12px;color:var(--text3);font-weight:600;margin-bottom:6px">Subject Name *</div>
+      <input type="text" id="m-name" placeholder="e.g. Engineering Mathematics III" value="${esc(subj?.name||'')}">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <div style="font-size:12px;color:var(--text3);font-weight:600;margin-bottom:6px">Subject Code</div>
+        <input type="text" id="m-code" placeholder="e.g. MA301" value="${esc(subj?.code||'')}">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);font-weight:600;margin-bottom:6px">Required %</div>
+        <input type="number" id="m-req" placeholder="75" value="${subj?.required||75}" min="1" max="100" oninput="updateModalPreview()">
+      </div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:var(--sky);font-weight:700;margin-bottom:6px">Total Classes This Semester *</div>
+      <input type="number" id="m-total" placeholder="e.g. 90  (from your timetable)" value="${subj?.total||''}" min="1" oninput="updateModalPreview()">
+      <div style="font-size:11px;color:var(--text3);margin-top:5px">Total lectures scheduled for the whole semester</div>
+    </div>
+    <div id="m-preview" style="display:none;background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.2);border-radius:12px;padding:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--sky);letter-spacing:.08em;margin-bottom:8px">SEMESTER PREVIEW</div>
+      <div style="display:flex;justify-content:space-around">
+        <div style="text-align:center"><div class="mono" style="font-size:22px;font-weight:700;color:var(--rose)" id="m-prev-attend">&mdash;</div><div style="font-size:11px;color:var(--text3)">must attend</div></div>
+        <div style="text-align:center"><div class="mono" style="font-size:22px;font-weight:700;color:var(--green)" id="m-prev-bunk">&mdash;</div><div style="font-size:11px;color:var(--text3)">can bunk</div></div>
+      </div>
+      <div id="m-prev-note" style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px"></div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:var(--text3);font-weight:600;margin-bottom:6px">Timetable Days <span style="font-size:10px;font-weight:400">(optional)</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${dayBtns}</div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:var(--text3);font-weight:600;margin-bottom:8px">Color</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${colorSwatches}</div>
+    </div>
+    <button onclick="saveSubject()" style="background:var(--sky);color:#05070f;font-weight:800;font-size:15px;padding:15px;border-radius:14px;border:none;cursor:pointer;width:100%;margin-top:4px">
+      ${editId?'Save Changes':'Add Subject'}
+    </button>
+    ${editId?`<button onclick="closeModal()" style="background:transparent;border:1px solid var(--border);color:var(--text3);font-weight:700;font-size:14px;padding:12px;border-radius:14px;cursor:pointer;width:100%">Cancel</button>`:''}
+  </div>`;
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('backdrop').classList.add('show');
+  if(subj)updateModalPreview();
+  setTimeout(()=>document.getElementById('m-name')?.focus(),100);
+}
+
+function updateModalPreview(){
+  const total=parseInt(document.getElementById('m-total')?.value)||0;
+  const req=parseFloat(document.getElementById('m-req')?.value)||75;
+  const prev=document.getElementById('m-preview');
+  if(!prev)return;
+  if(total>0&&req>0&&req<=100){
+    const min=Math.ceil(req/100*total);
+    document.getElementById('m-prev-attend').textContent=min;
+    document.getElementById('m-prev-bunk').textContent=Math.max(0,total-min);
+    document.getElementById('m-prev-note').textContent=`${min} of ${total} classes = ${req}% required`;
+    prev.style.display='block';
+  }else prev.style.display='none';
+}
+
+function toggleDay(i){document.getElementById('tday-'+i).classList.toggle('sel')}
+
+function selectColor(c){
+  S.ui.selColor=c;
+  document.querySelectorAll('.color-swatch').forEach(el=>el.classList.remove('sel'));
+  COLORS.forEach((col,i)=>{if(col===c)document.getElementById('sw-'+i)?.classList.add('sel')});
+}
+
+function closeModal(){
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('backdrop').classList.remove('show');
+  S.ui.editId=null;
+}
+
+function saveSubject(){
+  const name=document.getElementById('m-name')?.value.trim();
+  const code=document.getElementById('m-code')?.value.trim();
+  const total=parseInt(document.getElementById('m-total')?.value)||0;
+  const req=parseFloat(document.getElementById('m-req')?.value)||75;
+  const days=WEEK_DAYS.map((_,i)=>i).filter(i=>document.getElementById('tday-'+i)?.classList.contains('sel'));
+  if(!name){const el=document.getElementById('m-name');el.style.borderColor='var(--rose)';el.focus();return}
+  if(total<1){const el=document.getElementById('m-total');el.style.borderColor='var(--rose)';el.focus();return}
+  const isEdit=!!S.ui.editId;
+  if(isEdit){
+    const idx=S.subjects.findIndex(s=>s.id===S.ui.editId);
+    if(idx>=0)S.subjects[idx]={...S.subjects[idx],name,code,total,required:req,color:S.ui.selColor,days};
+  }else{
+    S.subjects.push({id:uid(),name,code,total,required:req,color:S.ui.selColor,days});
+  }
+  persist();closeModal();renderDashboard();renderSubjects();
+  showToast(isEdit?'&#x2713; Subject updated':'&#x2713; Subject added');
+}
+
+function deleteSubject(id){
+  const subj=S.subjects.find(s=>s.id===id);
+  if(!subj||!confirm('Delete "'+subj.name+'" and all its attendance records?'))return;
+  S.subjects=S.subjects.filter(s=>s.id!==id);
+  S.attendance=S.attendance.filter(a=>a.subject_id!==id);
+  persist();renderDashboard();renderSubjects();
+  showToast('Deleted');
+}
+
+function markAtt(subjectId,date,newStatus){
+  const idx=S.attendance.findIndex(a=>a.subject_id===subjectId&&a.date===date);
+  if(idx>=0){
+    if(S.attendance[idx].status===newStatus)S.attendance.splice(idx,1);
+    else S.attendance[idx]={...S.attendance[idx],status:newStatus};
+  }else{
+    S.attendance.push({id:uid(),subject_id:subjectId,date,status:newStatus});
+  }
+  persist();renderDayPanelBody(date);
+  if(S.ui.view==='calendar')renderCalendar();
+}
+
+function toggleLeave(){
+  S.settings.leave_exempted=!S.settings.leave_exempted;
+  persist();renderDashboard();
+  showToast(S.settings.leave_exempted?'Leave exemption ON':'Leave exemption OFF');
+}
+
+function exportSummary(){
+  if(S.subjects.length===0){showToast('No subjects to export');return}
+  const allStats=S.subjects.map(s=>({s,st:calcSubjectStats(s)}));
+  const totAtt=allStats.reduce((a,{st})=>a+st.attended,0);
+  const totHeld=allStats.reduce((a,{st})=>a+st.held,0);
+  const oPct=totHeld>0?Math.round(totAtt/totHeld*100):0;
+  const lines=['AttendEase — Attendance Summary',`Generated: ${new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}`,`Overall: ${oPct}% (${totAtt}/${totHeld} held)`,''];
+  allStats.forEach(({s,st})=>{
+    const em={safe:'[SAFE]',on_edge:'[EDGE]',danger:'[DANGER]',critical:'[CRITICAL]',no_data:'[-]'}[st.status]||'[-]';
+    lines.push(`${em} ${s.name}${s.code?' ('+s.code+')':''}`);
+    lines.push(`  ${st.currentPct>0?st.currentPct+'%':'--'} | ${st.attended}/${st.held} classes`);
+    if(st.status==='safe'||st.status==='on_edge')lines.push(`  Safe bunks left: ${st.safeBunks}`);
+    else if(st.status==='danger')lines.push(`  Must attend: ${st.classesNeeded} more`);
+    else if(st.status==='critical')lines.push(`  Recovery impossible (max ${st.maxPct}%)`);
+    lines.push('');
+  });
+  const text=lines.join('\n');
+  if(navigator.clipboard){navigator.clipboard.writeText(text).catch(()=>fallbackCopy(text));}else{fallbackCopy(text);}
+  showToast('Summary copied to clipboard!');
+}
+function fallbackCopy(text){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);}
+
+function openInfoModal(){
+  document.getElementById('info-content').innerHTML=`
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div style="background:var(--inner);border-radius:14px;padding:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--sky);letter-spacing:.08em;margin-bottom:8px">CURRENT ATTENDANCE</div>
+      <div class="mono" style="font-size:13px;background:rgba(0,0,0,.3);border-radius:8px;padding:10px;color:var(--text2)">Attendance% = (Attended &divide; Total Held) &times; 100</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:6px">Example: 45/60 &rarr; 75.0%</div>
+    </div>
+    <div style="background:var(--inner);border-radius:14px;padding:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--green);letter-spacing:.08em;margin-bottom:8px">SAFE BUNKS FORMULA</div>
+      <div class="mono" style="font-size:12px;background:rgba(0,0,0,.3);border-radius:8px;padding:10px;color:var(--text2)">Bunks = floor(P + S&times;(1-R) &minus; R&times;T)</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:6px">P=attended, S=remaining, R=required/100, T=total held<br>Example: 45 + 30&times;0.25 &minus; 0.75&times;60 = <strong style="color:white">7 bunks</strong></div>
+    </div>
+    <div style="background:var(--inner);border-radius:14px;padding:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--amber);letter-spacing:.08em;margin-bottom:8px">RECOVERY FORMULA</div>
+      <div class="mono" style="font-size:12px;background:rgba(0,0,0,.3);border-radius:8px;padding:10px;color:var(--text2)">Needed = ceil(R&times;(T+S) &minus; P)</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:6px">If Needed &gt; Remaining &rarr; recovery impossible</div>
+    </div>
+    <div style="background:var(--inner);border-radius:14px;padding:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.08em;margin-bottom:10px">ATTENDANCE TYPES</div>
+      ${Object.entries(STATUS).map(([key,st])=>`<div style="display:flex;gap:10px;align-items:center;margin-top:8px"><div style="width:24px;height:24px;border-radius:6px;background:${st.bg};border:1px solid ${st.bd};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">${st.icon}</div><div style="flex:1"><div style="font-size:12px;font-weight:600;color:${st.clr}">${st.label}</div><div style="font-size:10px;color:var(--text3)">${st.countsAttended?'Counts as attended':'Not attended'} &middot; ${st.countsHeld?'In held count':'Not counted'}</div></div></div>`).join('')}
+    </div>
+  </div>`;
+  document.getElementById('info-modal').classList.add('open');
+  document.getElementById('backdrop').classList.add('show');
+}
+function closeInfoModal(){
+  document.getElementById('info-modal').classList.remove('open');
+  document.getElementById('backdrop').classList.remove('show');
+}
+
+function switchView(view){
+  S.ui.view=view;
+  ['dashboard','calculator','calendar','subjects'].forEach(v=>{
+    document.getElementById('view-'+v).classList.remove('active');
+    document.getElementById('nav-'+v).classList.remove('active');
+  });
+  document.getElementById('view-'+view).classList.add('active');
+  document.getElementById('nav-'+view).classList.add('active');
+  if(view==='dashboard')renderDashboard();
+  if(view==='calculator')quickCalc();
+  if(view==='calendar')renderCalendar();
+  if(view==='subjects')renderSubjects();
+}
+
+function fmtDate(d){return d.toISOString().split('T')[0]}
+function fmtDateYMD(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function showToast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
+
+let touchY0=0;
+document.getElementById('day-panel').addEventListener('touchstart',e=>{touchY0=e.touches[0].clientY});
+document.getElementById('day-panel').addEventListener('touchend',e=>{if(e.changedTouches[0].clientY-touchY0>60)closeDayPanel()});
+document.getElementById('modal-box').addEventListener('touchstart',e=>{touchY0=e.touches[0].clientY});
+document.getElementById('modal-box').addEventListener('touchend',e=>{if(e.changedTouches[0].clientY-touchY0>80)closeModal()});
+
+hydrate();
+S.ui.calYear=new Date().getFullYear();
+S.ui.calMonth=new Date().getMonth();
+renderDashboard();
+quickCalc();
+</script>
+</body>
+</html>
